@@ -11,8 +11,6 @@ class Cohort():
     def __init__(self, population = 5):
         self.population = population
     
-    def evolve():
-        pass
 
 
 class Agent():
@@ -29,7 +27,7 @@ class Agent():
         self.initialFood = initialFood
         self.cloth = initialCloth
         self.initialCloth = initialCloth
-        self.productivity = productivities #TODO tornar variavel
+        self.productivity = productivities 
         self.wrongChoicePunishment = -1
         self.deathPunishment = -10
         
@@ -53,7 +51,7 @@ class Agent():
             return self.cobbDouglas
     
     def getState(self):
-        temp = [self.x, self.y, self.food, self.cloth, self.storagedCloth, self.storagedFood]
+        temp = [self.x, self.y, self.food, self.cloth, self.productivity[0], self.productivity[1]]
         return temp
 
     def reset(self):
@@ -68,25 +66,6 @@ class Agent():
         self.storagedFood = 0
         self.acumulatedUtil = 0
     
-    def _randomName(self):
-        pass
-
-
-    def _randomUtilFun(self):
-        pass
-
-
-    def getAction(self):
-        pass
-
-
-    def movement(self):
-        pass
-
-
-    def consume(self):
-        pass
-
 
     def collect(self, tile, foodLaborTax = 0, clothLaborTax = 0):
         self.exhaustion = 0 #TODO adicionar exaustão
@@ -97,15 +76,6 @@ class Agent():
             self.food += capital * self.productivity[0] * (1-foodLaborTax)
         elif good == 1:
             self.cloth += capital * self.productivity[1] * (1-clothLaborTax)
-
-
-    def educate(self):
-        pass
-
-
-    def invest(self):
-        pass
-
 
 
     def predict(self, mapInfo, marketInfo, agentInfo, model, positionalInfo):
@@ -132,13 +102,12 @@ class Agent():
 
         return self.getState(), utilReward
     
-    def cobbDouglas(self, foodConsumed, clothConsumed, alpha=0.5, beta=0.5):
-
-        temp = (foodConsumed ** (alpha)) * (clothConsumed ** (beta))
+    def cobbDouglas(self, foodConsumed, clothConsumed, alpha=0.5, beta=0.5, gamma = 20):
+        temp = (foodConsumed ** (alpha)) * ((gamma *clothConsumed) ** (beta))
         return temp
     
-    def quasiLinear(self, foodConsumed, clothConsumed, alpha = 0.5, beta = 0.5):
-        temp = foodConsumed + np.log(clothConsumed+1)
+    def quasiLinear(self, foodConsumed, clothConsumed, alpha = 0.5, beta = 0.5, gamma = 20):
+        temp = foodConsumed + np.log((gamma * clothConsumed)+1)
         return temp
 
 
@@ -152,7 +121,6 @@ class ActorCritic(nn.Module):
 
         self.mapLayer = nn.Sequential(nn.Conv2d(3, mapOutputSize, kernel_size=2)
                                       )
-        #TODO verificar a convulução de 3 imagens
 
         sharedInputSize = (9*mapOutputSize) + marketSize + agentInfoSize + positionalInfo
 

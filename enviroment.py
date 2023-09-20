@@ -109,7 +109,7 @@ class enviroment():
             else:
                 return mapInfo, newMarketInfo, agentInfo, agent.wrongChoicePunishment, agent.alive 
             
-        elif action == 5: #TODO adicionar mercado
+        elif action == 5:
             
             order = Offer(agent.rg, "food", fquantity, "cloth", cquantity, eps)
 
@@ -119,7 +119,7 @@ class enviroment():
                 
             return mapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive
         
-        elif action == 6: #TODO adicionar mercado
+        elif action == 6:
 
             order = Offer(agent.rg, "cloth", cquantity, "food", fquantity, eps)
             
@@ -143,8 +143,6 @@ class enviroment():
                 
             return mapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive
         else:
-            print(action)
-            print("deu errado")
             pass
 
 

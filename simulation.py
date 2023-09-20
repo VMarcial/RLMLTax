@@ -76,7 +76,7 @@ class simulation():
     
 
     def _resetEnviroment(self):
-        pass
+        self.ambient = enviroment.enviroment()
 
 
     def _getTrainers(self, trainers = None):
@@ -107,7 +107,6 @@ class simulation():
         for i in range(len(self.cohorts)): trainingData.append(cohortData)
         self._resetAgents()
         self._resetEnviroment()
-        #trainingData = np.array(trainingData)
         epTracker = tracker.episodeTracker(len(self.epsTrackers), self.ambient.geography, self.nCohorts, self.cohortSize)
         progressbar = tqdm(range(maxTurns), leave= False, desc = f"running turn 0")
         marketorderBuffer = []
@@ -193,11 +192,9 @@ class simulation():
         for eps in progressbar:
             trainingData, temp = self._runEpisode( consumptionFoodTax = consumptionFoodTax, consumptionClothTax = consumptionClothTax, wealthTax = wealthTax, laborClothTax = laborClothTax, laborFoodTax = laborFoodTax)
             self.epsTrackers.append(temp)
-            #episodesRewards.append([0,0])
             for i in tqdm(range(len(self.cohorts)), desc = f"training neural networks", leave = False):
                 
                 tdata = trainingData[i]
-                #rew = rewards[i] #TODO colocar no tracker
 
                 # Aleatorizamos a ordem dos dados para reduzir overfitting
                 permutation = np.random.permutation(len(tdata[0])).tolist()
@@ -205,7 +202,6 @@ class simulation():
 
                 # Transformamos no tipo necessário para passar pelo ML
 
-                #Erro aqui
                 #TODO colocar a randomização
                 #temp = list(zip(tdata[0], tdata[1], tdata[2], tdata[3], tdata[4], tdata[5], tdata[6]))
                 #temp = []
@@ -226,16 +222,7 @@ class simulation():
 
                 self.cohortTrainer[i].trainValue(mapInfo, marketInfo, agentInfo, returns, positionalInfo)
 
-            #if (i + 1) % 5 == 0:print(rew)#print('Episode {} | Avg Reward {:.1f}'.format(i + 1, np.mean(ep_rewards[-print_freq:])))
             progressbar.set_description(f"running epoch {eps+1} bestUtility:{temp.maxUtility} nActions {temp.actionsTaken}")
         obs = []
             
-
-    def save(self):
-        pass
-
-
-    def _load(self):
-        pass
-
     
