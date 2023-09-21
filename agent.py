@@ -54,6 +54,7 @@ class Agent():
         temp = [self.x, self.y, self.food, self.cloth, self.productivity[0], self.productivity[1]]
         return temp
 
+
     def reset(self):
         self.food = self.initialFood
         self.cloth = self.initialCloth
@@ -71,11 +72,17 @@ class Agent():
         self.exhaustion = 0 #TODO adicionar exaustão
         good = tile[1]
         capital = tile[2]
+        foodTaxed = 0
+        clothTaxed = 0
 
         if good == 0:
             self.food += capital * self.productivity[0] * (1-foodLaborTax)
+            foodTaxed += capital * self.productivity[0] * foodLaborTax
         elif good == 1:
             self.cloth += capital * self.productivity[1] * (1-clothLaborTax)
+            clothTaxed += capital * self.productivity[1] * clothLaborTax
+        
+        return foodTaxed, clothTaxed
 
 
     def predict(self, mapInfo, marketInfo, agentInfo, model, positionalInfo):
@@ -86,11 +93,16 @@ class Agent():
         
         self.food -= 1
         utilReward = 2
+        t1foodTax = 0
+        t1clothTax = 0
 
         self.actionsTaken.append(action)
 
         if wealthTax != None:
+            t1foodTax = self.food - (self.food * (1 - wealthTax))
             self.food = self.food * (1 - wealthTax)
+            t1clothTax = self.cloth -  (self.cloth * (1 - wealthTax))
+            self.cloth = self.cloth * (1 - wealthTax)
 
         #Checando se continuará vivo
         if self.food <= 0:
@@ -100,7 +112,10 @@ class Agent():
         utilReward += self.util(1*(1-foodConsumptionTax), consumedCloth*(1-clothConsumptionTax)) 
         self.acumulatedUtil += utilReward
 
-        return self.getState(), utilReward
+        foodTaxed = t1foodTax + (1 * foodConsumptionTax)
+        clothTaxed = t1clothTax + (consumedCloth * clothConsumptionTax)
+
+        return self.getState(), utilReward, foodTaxed, clothTaxed
     
     def cobbDouglas(self, foodConsumed, clothConsumed, alpha=0.5, beta=0.5, gamma = 20):
         temp = (foodConsumed ** (alpha)) * ((gamma *clothConsumed) ** (beta))
@@ -124,21 +139,25 @@ class ActorCritic(nn.Module):
 
         sharedInputSize = (9*mapOutputSize) + marketSize + agentInfoSize + positionalInfo
 
-        self.sharedLayers = nn.Sequential(nn.Linear(sharedInputSize, 256),
-                                          nn.Tanh(),
-                                          nn.Linear(256, 256),
-                                          nn.Tanh(),
+        self.sharedLayers = nn.Sequential(nn.Linear(sharedInputSize, 512),
+                                          nn.ReLU(),
+                                          nn.Linear(512, 512),
+                                          nn.ReLU(),
+                                          nn.Linear(512,256),
+                                          nn.ReLU(),
                                           #nn.LSTM(256, 256),
                                           nn.Linear(256,64),
-                                          nn.Tanh()
+                                          nn.Softmax()
                                           )
 
         self.policyLayers = nn.Sequential(nn.Linear(64,64),
+                                          nn.ReLU(),
                                           nn.Linear(64, actionsPossible),
-                                          nn.Tanh())
+                                          nn.Softmax())
         
         self.marketLayers = nn.Sequential(nn.Linear(64,8),
-                                         nn.Linear(8,2))
+                                         nn.Linear(8,2),
+                                         nn.ReLU())
 
         self.valueLayers= nn.Sequential(nn.Linear(64,32), 
                                         nn.Linear(32,1))
@@ -250,7 +269,18 @@ class PPOTrainer:
         valueParams = list(self.actorCritic.mapLayer.parameters()) + list(self.actorCritic.sharedLayers.parameters()) + list(self.actorCritic.valueLayers.parameters())
         self.valueOptimizer = optim.Adam(valueParams, lr  = self.valueLR)
 
-        marketParams = list(self.actorCritic.mapLayer.parameters()) + list(self.actorCritic.sharedLayers.parameters()) + list(self.actorCritic.valueLayers.parameters())
+        marketParams = list(self.actorCritic.mapLayer.parameters()) + list(self.actorCritic.sharedLayers.parameters()) + list(self.actorCritic.marketLayers.parameters())
+        self.marketOptimizer = optim.Adam(marketParams, lr  = self.valueLR)
+
+    def rebaseParams(self):
+
+        policyParams = list(self.actorCritic.mapLayer.parameters()) + list(self.actorCritic.sharedLayers.parameters()) + list(self.actorCritic.policyLayers.parameters())
+        self.policyOptimizer = optim.Adam(policyParams, lr = self.policyLR)
+
+        valueParams = list(self.actorCritic.mapLayer.parameters()) + list(self.actorCritic.sharedLayers.parameters()) + list(self.actorCritic.valueLayers.parameters())
+        self.valueOptimizer = optim.Adam(valueParams, lr  = self.valueLR)
+
+        marketParams = list(self.actorCritic.mapLayer.parameters()) + list(self.actorCritic.sharedLayers.parameters()) + list(self.actorCritic.marketLayers.parameters())
         self.marketOptimizer = optim.Adam(marketParams, lr  = self.valueLR)
 
 
@@ -261,6 +291,7 @@ class PPOTrainer:
 
             newProbabilities = self.actorCritic.policyNN(mapInfo, marketInfo, agentInfo, positionalInfo)
             newProbabilities = Categorical(logits= newProbabilities)
+            entropy = newProbabilities.entropy().mean()
             newLogProbs = newProbabilities.log_prob(actions)
 
             policyRatio = torch.exp(newLogProbs - oldLogProbs)
@@ -269,13 +300,10 @@ class PPOTrainer:
             clippedLoss = clippedRatio * gaes
             actualLoss = policyRatio * gaes
 
-            loss = -torch.min(clippedLoss, actualLoss).mean()
+            loss = -torch.min(clippedLoss, actualLoss).mean() - 0.01 * entropy
 
             loss.backward()
             self.policyOptimizer.step()
-
-            divergence = (oldLogProbs - newLogProbs).mean()
-            if divergence >= self.targetDivergence: break
 
     def trainValue(self, mapInfo, marketInfo, agentInfo, returns, positionalInfo):
         for i in range(self.valueTrainIterations):
@@ -288,16 +316,16 @@ class PPOTrainer:
             self.valueOptimizer.step()
 
 
-    def trainMarket(self, mapInfo, marketInfo, agentInfo, maxPrice, minPrice, positionalInfo):
+    def trainMarket(self, mapInfo, marketInfo, agentInfo, positionalInfo):
         for i in range(self.valueTrainIterations):
             self.marketOptimizer.zero_grad()
+            minPrice = marketInfo[4]
 
             values = self.actorCritic.marketNN(mapInfo, marketInfo, agentInfo, positionalInfo)
-            loss1 = ((maxPrice - values) ** 2)
             loss2 = ((minPrice - values) ** 2)
-            loss = torch.min(loss1, loss2).mean()
+            loss = torch.min(loss2).mean()
 
             loss.backward()
-            self.markerOptimizer.step()
+            self.marketOptimizer.step()
 
 

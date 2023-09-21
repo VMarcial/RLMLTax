@@ -87,7 +87,7 @@ class episodeTracker():
         print(f"Utilidade Máxima: {self.maxUtility}")
         print(f"Total de ações: {self.actionsTaken}")
         print(f"Distribuição das ações:")
-        print(f"Nada/Lazer/Trabalhar: {self.actionDistribution[0]}")
+        print(f"Trabalhar: {self.actionDistribution[0]}")
         print(f"Mover para cima: {self.actionDistribution[1]}")
         print(f"Mover para baixo: {self.actionDistribution[2]}")
         print(f"Mover para esquerda: {self.actionDistribution[3]}")
@@ -95,12 +95,12 @@ class episodeTracker():
         print(f"Trocar Comida por Tecido: {self.actionDistribution[5]}")
         print(f"Trocar Tecido por Comida: {self.actionDistribution[6]}")
         print(f"Consumir: {self.actionDistribution[7]}")
-        print(f"Investir: {self.actionDistribution[8]}")
+        print(f"Nada: {self.actionDistribution[8]}")
 
 
     def _getCohortLocation(self, agent):
-        cohort = (agent.rg // self.cohortSize) - 1
-        relativeLocation = agent.rg % self.cohortSize
+        cohort = ((agent.rg -1) // self.cohortSize)
+        relativeLocation = (agent.rg-1) % self.cohortSize
         return (cohort, relativeLocation)
 
     def showMaps(self):

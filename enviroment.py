@@ -15,15 +15,15 @@ class enviroment():
         maps = self.geography.subMap(x,y)
         workingTile = self.workingTile(x,y)
         #TODO adicionar as informações de mercado
-        y = [0,0,0,0,0] # melhorpreco, quantidademelhorprecofood, quantidademelhorprecocloth, quantidadefood, quantidadecloth
+        y = self.market.getInfo() # melhorpreco, quantidademelhorprecofood, quantidademelhorprecocloth, quantidadefood, quantidadecloth
         #x = np.concatenate([maps[0].flatten(), maps[1].flatten(), maps[2].flatten()])        
-        return maps, y, [int(workingTile[2]), int(workingTile[2])]
+        return maps, y, [int(workingTile[1]), int(workingTile[2])]
     
 
     def workingTile(self, x, y):
 
         if self.geography.food[x, y] != 0:
-            return [True, 0, self.geography.food[x, y]]
+            return [True, self.geography.food[x, y], 0]
         elif self.geography.cloth[x, y] != 0:
             return [True, 0, self.geography.cloth[x, y]]
         else:
@@ -48,14 +48,17 @@ class enviroment():
 
         if action == 0:
             if self.workingTile(agent.x, agent.y)[0] == True:
-                agent.collect(self.workingTile(agent.x, agent.y), laborFoodTax, laborClothTax)
-                newAgentInfo, utilityReward = agent.update(action, mapInfo, wealthTax)
-
-                return mapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive
+                t1foodTaxed, t1clothTaxed = agent.collect(self.workingTile(agent.x, agent.y), laborFoodTax, laborClothTax)
+                newAgentInfo, utilityReward, t2foodTaxed, t2clothTaxed = agent.update(action, mapInfo, wealthTax)
+                
+                foodTaxed = t1foodTaxed + t2foodTaxed 
+                clothTaxed = t1clothTaxed + t2clothTaxed
+                
+                return mapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive, foodTaxed, clothTaxed
             else:
-                newAgentInfo, utilityReward = agent.update(action, mapInfo, wealthTax = wealthTax, foodConsumptionTax = consumptionFoodTax)
+                newAgentInfo, utilityReward, foodTaxed, clothTaxed = agent.update(action, mapInfo, wealthTax = wealthTax, foodConsumptionTax = consumptionFoodTax)
 
-                return mapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive
+                return mapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive, foodTaxed, clothTaxed
 
         elif action == 1:
             tempX, tempY = agent.x, agent.y + 1
@@ -63,12 +66,12 @@ class enviroment():
             if self.geography.food[tempX, tempY] != -1:
                 newMapInfo = self.geography.updatePeople(agent.x, agent.y, tempX, tempY)
                 agent.x, agent.y = tempX, tempY
-                newAgentInfo, utilityReward = agent.update(action, newMapInfo, wealthTax =wealthTax)
+                newAgentInfo, utilityReward, foodTaxed, clothTaxed = agent.update(action, newMapInfo, wealthTax =wealthTax)
 
-                return newMapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive 
+                return newMapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive, foodTaxed, clothTaxed 
             
             else:
-                return mapInfo, newMarketInfo, agentInfo, agent.wrongChoicePunishment, agent.alive 
+                return mapInfo, newMarketInfo, agentInfo, agent.wrongChoicePunishment, agent.alive, 0, 0 
 
         elif action == 2:     
             tempX, tempY = agent.x, agent.y - 1
@@ -76,12 +79,12 @@ class enviroment():
             if self.geography.food[tempX, tempY] != -1:
                 newMapInfo = self.geography.updatePeople(agent.x, agent.y, tempX, tempY)
                 agent.x, agent.y = tempX, tempY
-                newAgentInfo, utilityReward = agent.update(action, newMapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax)
+                newAgentInfo, utilityReward, foodTaxed, clothTaxed = agent.update(action, newMapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax)
 
-                return newMapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive 
+                return newMapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive, foodTaxed, clothTaxed 
             
             else:
-                return mapInfo, newMarketInfo, agentInfo, agent.wrongChoicePunishment, agent.alive 
+                return mapInfo, newMarketInfo, agentInfo, agent.wrongChoicePunishment, agent.alive, 0, 0 
             
         elif action == 3:
             tempX, tempY = agent.x + 1, agent.y
@@ -89,12 +92,12 @@ class enviroment():
             if self.geography.food[tempX, tempY] != -1:
                 newMapInfo = self.geography.updatePeople(agent.x, agent.y, tempX, tempY)
                 agent.x, agent.y = tempX, tempY
-                newAgentInfo, utilityReward = agent.update(action, newMapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax)
+                newAgentInfo, utilityReward, foodTaxed, clothTaxed = agent.update(action, newMapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax)
 
-                return newMapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive 
+                return newMapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive, foodTaxed, clothTaxed 
             
             else:
-                return mapInfo, newMarketInfo, agentInfo, agent.wrongChoicePunishment, agent.alive 
+                return mapInfo, newMarketInfo, agentInfo, agent.wrongChoicePunishment, agent.alive, 0, 0 
         
         elif action == 4:           
             tempX, tempY = agent.x - 1, agent.y
@@ -102,46 +105,56 @@ class enviroment():
             if self.geography.food[tempX, tempY] != -1:
                 newMapInfo = self.geography.updatePeople(agent.x, agent.y, tempX, tempY)
                 agent.x, agent.y = tempX, tempY
-                newAgentInfo, utilityReward = agent.update(action, newMapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax)
+                newAgentInfo, utilityReward, foodTaxed, clothTaxed = agent.update(action, newMapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax)
 
-                return newMapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive 
+                return newMapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive, foodTaxed, clothTaxed 
             
             else:
-                return mapInfo, newMarketInfo, agentInfo, agent.wrongChoicePunishment, agent.alive 
+                return mapInfo, newMarketInfo, agentInfo, agent.wrongChoicePunishment, agent.alive, 0, 0 
             
         elif action == 5:
+
+            if fquantity > 0 and cquantity > 0:
             
-            order = Offer(agent.rg, "food", fquantity, "cloth", cquantity, eps)
+                order = Offer(agent.rg, "food", fquantity, "cloth", cquantity, eps)
 
-            self.market.orders.append(order)
+                self.market.orders.append(order)
 
-            newAgentInfo, utilityReward = agent.update(action, mapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax)
-                
-            return mapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive
-        
+                newAgentInfo, utilityReward, foodTaxed, clothTaxed = agent.update(action, mapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax)
+
+                return mapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive, foodTaxed, clothTaxed
+            else:
+                newAgentInfo, utilityReward, foodTaxed, clothTaxed = agent.update(action, mapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax)
+
+                return mapInfo, newMarketInfo, agentInfo, agent.wrongChoicePunishment, agent.alive, 0, 0 
+      
         elif action == 6:
 
-            order = Offer(agent.rg, "cloth", cquantity, "food", fquantity, eps)
+            if fquantity > 0 and cquantity > 0:
+
+                order = Offer(agent.rg, "cloth", cquantity, "food", fquantity, eps)
+
+                self.market.orders.append(order)
+
+                newAgentInfo, utilityReward, foodTaxed, clothTaxed = agent.update(action, mapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax)
+
+                return mapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive, foodTaxed, clothTaxed
             
-            self.market.orders.append(order)
-            
-            newAgentInfo, utilityReward = agent.update(action, mapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax)
-            
-            return mapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive
-        
+            else:
+                newAgentInfo, utilityReward, foodTaxed, clothTaxed = agent.update(action, mapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax)
+
+                return mapInfo, newMarketInfo, agentInfo, agent.wrongChoicePunishment, agent.alive, 0, 0 
+              
         elif action == 7:
             
-            #tempUtilityReward = agent.consume()#TODO adicionar quantidade variavel
-            newAgentInfo, utilityReward = agent.update(action, mapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax, consumedCloth = 1)
+            newAgentInfo, utilityReward, foodTaxed, clothTaxed = agent.update(action, mapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax, consumedCloth = 1)
 
-            #utilityReward =  tempUtilityReward + utilityReward
-
-            return mapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive
+            return mapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive, foodTaxed, clothTaxed
 
         elif action == 8:
-            newAgentInfo, utilityReward = agent.update(action, mapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax, clothConsumptionTax = consumptionClothTax)
+            newAgentInfo, utilityReward, foodTaxed, clothTaxed = agent.update(action, mapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax, clothConsumptionTax = consumptionClothTax)
                 
-            return mapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive
+            return mapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive, foodTaxed, clothTaxed
         else:
             pass
 
@@ -157,7 +170,44 @@ class market():
         self.sells = []
         self.maxPrice = None
         self.minPrice = None
+    
 
+    def getInfo(self):
+        offers = self.orders
+        offers_A_to_B = [o for o in offers if o.offer_item == 'cloth' and o.request_item == 'food']
+        offers_B_to_A = [o for o in offers if o.offer_item == 'food' and o.request_item == 'cloth']
+        offers_A_to_B = sorted(offers_A_to_B, key=lambda x: (x.offer_quantity / x.request_quantity))
+        offers_B_to_A = sorted(offers_B_to_A, key=lambda x: (x.request_quantity / x.offer_quantity))
+        quantidadeA = sum([x.offer_quantity for x in offers_A_to_B])
+        quantidadeB = sum([x.offer_quantity  for x in offers_B_to_A])
+        precoImplicitoA = None
+        precoImplicitoB = None
+        if len(offers_A_to_B)>0: precoImplicitoA = (offers_A_to_B[0].offer_quantity / offers_A_to_B[0].request_quantity)
+        if len(offers_B_to_A)>0: precoImplicitoB = (offers_B_to_A[0].request_quantity / offers_B_to_A[0].offer_quantity)
+        if precoImplicitoA != None:
+            if precoImplicitoB != None:
+                    melhorPreco = min(precoImplicitoA, precoImplicitoB)
+                    melhorQuantidadeA = offers_A_to_B[0].offer_quantity
+                    melhorQuantidadeB = offers_B_to_A[0].request_quantity
+            else:
+                melhorPreco = precoImplicitoA
+                precoImplicitoB = -1
+                melhorQuantidadeB = -1
+                melhorQuantidadeA = offers_A_to_B[0].offer_quantity
+        else:
+            if precoImplicitoB != None:
+                melhorPreco = precoImplicitoB
+                melhorQuantidadeB = offers_B_to_A[0].request_quantity
+                precoImplicitoA = -1
+                melhorQuantidadeA = -1
+            else:
+                melhorPreco = -1
+                precoImplicitoA = -1
+                precoImplicitoB = -1
+                melhorQuantidadeA = -1
+                melhorQuantidadeB = -1
+        temp = [len(offers_A_to_B), len(offers_B_to_A), quantidadeA, quantidadeB, melhorPreco]
+        return [quantidadeA, quantidadeB, melhorQuantidadeA, melhorQuantidadeB, melhorPreco]
 
     def addBuy(self, agent, fquantity, cquantity, eps):
         total = fquantity
@@ -176,13 +226,15 @@ class market():
             return 0 
         else:
             return agent.wrongChoicePunishment
-
+    
+    def updatePrices(self):
+        pass
 
     def clear_market(self):
         offers = self.orders
         # Separate offers based on item types
-        offers_A_to_B = [o for o in offers if o.offer_item == 'itemA' and o.request_item == 'itemB']
-        offers_B_to_A = [o for o in offers if o.offer_item == 'itemB' and o.request_item == 'itemA']
+        offers_A_to_B = [o for o in offers if o.offer_item == 'cloth' and o.request_item == 'food']
+        offers_B_to_A = [o for o in offers if o.offer_item == 'food' and o.request_item == 'cloth']
 
         matched_offers = []
 
@@ -190,7 +242,8 @@ class market():
             for offer_B in offers_B_to_A[:]:
                 if offer_A.offer_quantity / offer_A.request_quantity >= offer_B.request_quantity / offer_B.offer_quantity:
                     transact_quantity = min(offer_A.offer_quantity, offer_B.request_quantity)
-                    matched_offers.append((offer_A, offer_B, transact_quantity))
+                    cquantity =  transact_quantity * offer_A.offer_quantity / offer_A.request_quantity
+                    matched_offers.append((offer_A, offer_B, transact_quantity, cquantity))
                     offer_A.offer_quantity -= transact_quantity
                     offer_B.request_quantity -= transact_quantity
 
@@ -200,7 +253,7 @@ class market():
                     if offer_B.request_quantity == 0:
                         offers_B_to_A.remove(offer_B)
                     break
-
+        self.orders = offers_A_to_B + offers_B_to_A
         return matched_offers
 
 
