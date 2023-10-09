@@ -3,24 +3,69 @@ import numpy as np
 import math
 
 class enviroment():
+    """
+    Essa classe cria o ambiente da simulação. Ela é composta por dois elementos: market e geography.
+    Parametros:
+    * seed(int): seed para o random. permite reproducibilidade. Por padrão None, que leva a uma seed aleatória.
+    * mapSize(int): tamanho do mapa mapSize x mapSize. Por padrão 5.
+    * visionSize(int): tamanho do espaço ao seu redor que o agente vê. Por padrão 2.
+    """
     
     def __init__(self, seed = None, mapSize = 5, visionSize = 2):
-        self.market = market()
-        self.mapSize = mapSize
+        
         if seed == None: self.seed = random.randint(0, 10000)
+        else: self.seed = seed
+        self.mapSize = mapSize
+        self.visionSize = visionSize
+        
+        # Inicialização do mercado
+        self.market = market()
+
+        # Inicialização do mapa
         self.geography = geography(seed= self.seed, mapSize = self.mapSize, visionSize= visionSize)
 
 
     def getInfo(self, x, y):
+        """
+        Retorna informações do ambiente para o agente
+        Parametros:
+        * x(int): posição x do agente no mapa 
+        * y(int): posição y do agente no mapa
+
+        Retorna:
+        * mapInfo: array de formato mapSize x mapSize x 3. 
+        * marketInfo: lista de tamanho y. Contendo os dados de preço e quantidade do mercado.
+        * workingInfo(tupla):  
+        """
+        
         maps = self.geography.subMap(x,y)
+        
         workingTile = self.workingTile(x,y)
-        #TODO adicionar as informações de mercado
-        y = self.market.getInfo() # melhorpreco, quantidademelhorprecofood, quantidademelhorprecocloth, quantidadefood, quantidadecloth
-        #x = np.concatenate([maps[0].flatten(), maps[1].flatten(), maps[2].flatten()])        
-        return maps, y, [int(workingTile[1]), int(workingTile[2])]
+        workingInfo = [int(workingTile[1]), int(workingTile[2])]
+        
+        marketInfo = self.market.getInfo() # melhorpreco, quantidademelhorprecofood, quantidademelhorprecocloth, quantidadefood, quantidadecloth
+        
+        return maps, marketInfo, workingInfo
+    
+
     
 
     def workingTile(self, x, y):
+
+        """
+        Retorna a informação se o indivíduo está em um campo em que possa produzir. 
+        Caso possa, retorna uma lista contendo a produtividade do local onde está.
+        
+        Parametros:
+        * x(int): posição x do agente no mapa 
+        * y(int): posição y do agente no mapa
+
+        Retorna lista com elementos que:
+
+        0) True caso seja possível trabalhar nesse campo, False caso contrário
+        1) 0 caso não seja possível produzir comida neste campo. int da produtividade do campo caso contrário
+        2) 0 caso não seja possível produzir tecido neste campo. int da produtividade do campo caso contrário
+        """
 
         if self.geography.food[x, y] != 0:
             return [True, self.geography.food[x, y], 0]
@@ -32,6 +77,9 @@ class enviroment():
 
     def step(self, agent, action, mapInfo, marketInfo, agentInfo,consumptionFoodTax, consumptionClothTax, wealthTax, laborFoodTax, laborClothTax, eps, fquantity, cquantity):
 
+        #TODO organizar isso, principalemente os inputs
+
+        # actions
         # 0: Nada
         # 1: Up
         # 2: Down
@@ -42,10 +90,18 @@ class enviroment():
         # 7: Consume
         # 8: Invest
 
-        #TODO colocar resolução do mercado aqui
+        """
+        Realiza uma ação no ambiente
 
-        newMarketInfo = marketInfo
+        Parametros:
 
+        """
+
+
+        newMarketInfo = marketInfo #TODO arrumar isso
+        
+        # Ficar parado. Caso seja um local de trabalho, permite que o agente produza comida
+        #TODO adicionar alguma fadiga por trabalhar demais
         if action == 0:
             if self.workingTile(agent.x, agent.y)[0] == True:
                 t1foodTaxed, t1clothTaxed = agent.collect(self.workingTile(agent.x, agent.y), laborFoodTax, laborClothTax)
@@ -60,6 +116,7 @@ class enviroment():
 
                 return mapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive, foodTaxed, clothTaxed
 
+        # Movimenta para cima
         elif action == 1:
             tempX, tempY = agent.x, agent.y + 1
 
@@ -73,6 +130,7 @@ class enviroment():
             else:
                 return mapInfo, newMarketInfo, agentInfo, agent.wrongChoicePunishment, agent.alive, 0, 0 
 
+        # Movimenta para baixo
         elif action == 2:     
             tempX, tempY = agent.x, agent.y - 1
 
@@ -85,7 +143,8 @@ class enviroment():
             
             else:
                 return mapInfo, newMarketInfo, agentInfo, agent.wrongChoicePunishment, agent.alive, 0, 0 
-            
+
+        # Movimenta para direita
         elif action == 3:
             tempX, tempY = agent.x + 1, agent.y
 
@@ -98,7 +157,8 @@ class enviroment():
             
             else:
                 return mapInfo, newMarketInfo, agentInfo, agent.wrongChoicePunishment, agent.alive, 0, 0 
-        
+
+        # Movimenta para a esqueda      
         elif action == 4:           
             tempX, tempY = agent.x - 1, agent.y
 
@@ -111,12 +171,13 @@ class enviroment():
             
             else:
                 return mapInfo, newMarketInfo, agentInfo, agent.wrongChoicePunishment, agent.alive, 0, 0 
-            
+        
+        # Faz uma oferta de comida por tecido
         elif action == 5:
 
             if fquantity > 0 and cquantity > 0:
             
-                order = Offer(agent.rg, "food", fquantity, "cloth", cquantity, eps)
+                order = Offer(agent.rg, "food", fquantity, "cloth", cquantity, eps) #TODO verificar se não ta ofertando mais comida/tecido do que tem
 
                 self.market.orders.append(order)
 
@@ -127,10 +188,11 @@ class enviroment():
                 newAgentInfo, utilityReward, foodTaxed, clothTaxed = agent.update(action, mapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax)
 
                 return mapInfo, newMarketInfo, agentInfo, agent.wrongChoicePunishment, agent.alive, 0, 0 
-      
+
+        # Faz uma oferta de tecido por comida
         elif action == 6:
 
-            if fquantity > 0 and cquantity > 0:
+            if fquantity > 0 and cquantity > 0: #TODO verificar se não ta ofertando mais comida/tecido do que tem
 
                 order = Offer(agent.rg, "cloth", cquantity, "food", fquantity, eps)
 
@@ -144,17 +206,21 @@ class enviroment():
                 newAgentInfo, utilityReward, foodTaxed, clothTaxed = agent.update(action, mapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax)
 
                 return mapInfo, newMarketInfo, agentInfo, agent.wrongChoicePunishment, agent.alive, 0, 0 
-              
+
+        # Consome tecido  
         elif action == 7:
             
             newAgentInfo, utilityReward, foodTaxed, clothTaxed = agent.update(action, mapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax, consumedCloth = 1)
 
             return mapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive, foodTaxed, clothTaxed
 
+        # Investe em um posto de trabalho aumentando sua produtividade para todos
         elif action == 8:
             newAgentInfo, utilityReward, foodTaxed, clothTaxed = agent.update(action, mapInfo, wealthTax =wealthTax, foodConsumptionTax = consumptionFoodTax, clothConsumptionTax = consumptionClothTax)
                 
             return mapInfo, newMarketInfo, newAgentInfo, utilityReward, agent.alive, foodTaxed, clothTaxed
+        
+        #TODO adicionar aumento de capital humano
         else:
             pass
 
@@ -173,17 +239,38 @@ class market():
     
 
     def getInfo(self):
+
+        """
+        Retorna informações do mercado de preço e quantidade disponíveis
+
+        Parametros:
+
+        Retorna:
+        
+
+        """
+
         offers = self.orders
+        
         offers_A_to_B = [o for o in offers if o.offer_item == 'cloth' and o.request_item == 'food']
         offers_B_to_A = [o for o in offers if o.offer_item == 'food' and o.request_item == 'cloth']
-        offers_A_to_B = sorted(offers_A_to_B, key=lambda x: (x.offer_quantity / x.request_quantity))
+        
+        offers_A_to_B = sorted(offers_A_to_B, key=lambda x: (x.offer_quantity / x.request_quantity)) #TODO checar se isso ta realmente fazendo os preços certos
         offers_B_to_A = sorted(offers_B_to_A, key=lambda x: (x.request_quantity / x.offer_quantity))
+        
+        # Calculando a quantidade total ofertada no mercado
         quantidadeA = sum([x.offer_quantity for x in offers_A_to_B])
         quantidadeB = sum([x.offer_quantity  for x in offers_B_to_A])
+        
+        # Inicizaliamos os preços implicitos nas ofertas
         precoImplicitoA = None
         precoImplicitoB = None
+        
+        # Calcula o melhor preço implicito nas ofertas
         if len(offers_A_to_B)>0: precoImplicitoA = (offers_A_to_B[0].offer_quantity / offers_A_to_B[0].request_quantity)
         if len(offers_B_to_A)>0: precoImplicitoB = (offers_B_to_A[0].request_quantity / offers_B_to_A[0].offer_quantity)
+        
+        # Calcula o melhor preço e a quantidade disponível aquele preço, retorna -1 caso não haja
         if precoImplicitoA != None:
             if precoImplicitoB != None:
                     melhorPreco = min(precoImplicitoA, precoImplicitoB)
@@ -206,7 +293,7 @@ class market():
                 precoImplicitoB = -1
                 melhorQuantidadeA = -1
                 melhorQuantidadeB = -1
-        temp = [len(offers_A_to_B), len(offers_B_to_A), quantidadeA, quantidadeB, melhorPreco]
+        
         return [quantidadeA, quantidadeB, melhorQuantidadeA, melhorQuantidadeB, melhorPreco]
 
     def addBuy(self, agent, fquantity, cquantity, eps):
@@ -219,6 +306,9 @@ class market():
             return agent.wrongChoicePunishment
 
     def addSell(self, agent, fquantity, cquantity, eps):
+        
+
+
         total = cquantity
         if self.agent.cloth >= total:
             self.agent.cloth -= total
@@ -265,8 +355,6 @@ class Offer:
         self.request_item = request_item
         self.request_quantity = request_quantity
         self.eps = eps
-
-
 
 
 class geography():
@@ -342,6 +430,8 @@ class geography():
 
 
     def _getCenterMap(self):
+        """
+        Retorna a posição x,y do meio do mapa"""
         self.center = ((self.visionSize * 2) + self.mapSize)//2
 
 
@@ -353,6 +443,7 @@ class geography():
 
         #TODO checar porque ta saindo 4x4 em vez de 5x5
 
+        # TODO não sei porque funciona sem isso mas funciona, não deveria
         # Caso algo de errado, isso aqui restringe os erros
         #if lx < 0: lx = self.visionSize
         #if ly < 0: ly = self.visionSize

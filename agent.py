@@ -43,6 +43,7 @@ class Agent():
 
 
     def _getUtilFun(self, utilFun):
+        # TODO dar algum jeito de normalizar isso
         if utilFun == "cobb douglas":
             return self.cobbDouglas
         elif utilFun == "quasilinear":
@@ -56,6 +57,9 @@ class Agent():
 
 
     def reset(self):
+        """"
+        Reseta o agente ao seu estado inicial para reinicar uma simulação
+        """
         self.food = self.initialFood
         self.cloth = self.initialCloth
         self.alive = True
@@ -69,6 +73,22 @@ class Agent():
     
 
     def collect(self, tile, foodLaborTax = 0, clothLaborTax = 0):
+
+        """
+        Coleta recursos do ambiente
+
+        Parametros:
+        * tile():
+        * foodLaborTax():
+        * clothLaborTax():
+
+        Retorna:
+        
+        0) foodTaxed(float): comida taxada
+        1) clothTaxed(float): tecido taxado
+        
+        """
+
         self.exhaustion = 0 #TODO adicionar exaustão
         good = tile[1]
         capital = tile[2]
@@ -96,7 +116,7 @@ class Agent():
         t1foodTax = 0
         t1clothTax = 0
 
-        self.actionsTaken.append(action)
+        self.actionsTaken.append(action) #
 
         if wealthTax != None:
             t1foodTax = self.food - (self.food * (1 - wealthTax))
@@ -118,10 +138,12 @@ class Agent():
         return self.getState(), utilReward, foodTaxed, clothTaxed
     
     def cobbDouglas(self, foodConsumed, clothConsumed, alpha=0.5, beta=0.5, gamma = 20):
+        #TODO arranjar algum jeito de normalizar isso aqui
         temp = (foodConsumed ** (alpha)) * ((gamma *clothConsumed) ** (beta))
         return temp
     
     def quasiLinear(self, foodConsumed, clothConsumed, alpha = 0.5, beta = 0.5, gamma = 20):
+        #TODO arranjar algum jeito de normalizar isso aqui
         temp = foodConsumed + np.log((gamma * clothConsumed)+1)
         return temp
 
@@ -145,7 +167,7 @@ class ActorCritic(nn.Module):
                                           nn.ReLU(),
                                           nn.Linear(512,256),
                                           nn.ReLU(),
-                                          #nn.LSTM(256, 256),
+                                          #nn.LSTM(256, 256), #TODO tem que arrumar a LSTM
                                           nn.Linear(256,64),
                                           nn.Softmax()
                                           )
@@ -157,7 +179,7 @@ class ActorCritic(nn.Module):
         
         self.marketLayers = nn.Sequential(nn.Linear(64,8),
                                          nn.Linear(8,2),
-                                         nn.ReLU())
+                                         nn.ReLU()) #Ultimo tem que ser ReLU pra não ter possibilidade de ser menor que zero
 
         self.valueLayers= nn.Sequential(nn.Linear(64,32), 
                                         nn.Linear(32,1))
@@ -273,6 +295,10 @@ class PPOTrainer:
         self.marketOptimizer = optim.Adam(marketParams, lr  = self.valueLR)
 
     def rebaseParams(self):
+
+        """
+        Isso aqui é para garantir que está otimizando as coisas certas depois do deepcopy. Possivelmente não precisa, mas é pra garantir.
+        """
 
         policyParams = list(self.actorCritic.mapLayer.parameters()) + list(self.actorCritic.sharedLayers.parameters()) + list(self.actorCritic.policyLayers.parameters())
         self.policyOptimizer = optim.Adam(policyParams, lr = self.policyLR)
